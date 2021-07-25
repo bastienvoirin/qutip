@@ -472,6 +472,8 @@ class Bloch:
         # equator
         self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='z',
                        lw=self.frame_width, color=self.frame_color)
+        self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='y',
+                       lw=self.frame_width, color=self.frame_color)
         self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='x',
                        lw=self.frame_width, color=self.frame_color)
 
@@ -492,6 +494,9 @@ class Bloch:
         # equator
         self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
                        zs=0, zdir='z', lw=self.frame_width,
+                       color=self.frame_color)
+        self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
+                       zs=0, zdir='y', lw=self.frame_width,
                        color=self.frame_color)
         self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
                        zs=0, zdir='x', lw=self.frame_width,
