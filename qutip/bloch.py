@@ -117,7 +117,7 @@ class Bloch:
         self.background = background
         # The size of the figure in inches, default = [5,5].
         self.figsize = figsize if figsize else [5, 5]
-        # Azimuthal and Elvation viewing angles, default = [-60,30].
+        # Azimuthal and Elevation viewing angles, default = [-60,30].
         self.view = view if view else [-60, 30]
         # Color of Bloch sphere, default = #FFDDDD
         self.sphere_color = '#FFDDDD'
@@ -129,15 +129,15 @@ class Bloch:
         self.frame_width = 1
         # Transparency of wireframe, default = 0.2
         self.frame_alpha = 0.2
-        # Labels for x-axis (in LaTex), default = ['$x$', '']
+        # Labels for x-axis (in LaTeX), default = ['$x$', '']
         self.xlabel = ['$x$', '']
         # Position of x-axis labels, default = [1.2, -1.2]
         self.xlpos = [1.2, -1.2]
-        # Labels for y-axis (in LaTex), default = ['$y$', '']
+        # Labels for y-axis (in LaTeX), default = ['$y$', '']
         self.ylabel = ['$y$', '']
-        # Position of y-axis labels, default = [1.1, -1.1]
+        # Position of y-axis labels, default = [1.2, -1.2]
         self.ylpos = [1.2, -1.2]
-        # Labels for z-axis (in LaTex),
+        # Labels for z-axis (in LaTeX),
         # default = [r'$\left\|0\right>$', r'$\left|1\right>$']
         self.zlabel = [r'$\left|0\right>$', r'$\left|1\right>$']
         # Position of z-axis labels, default = [1.2, -1.2]
@@ -147,6 +147,16 @@ class Bloch:
         self.font_color = 'black'
         # Size of fonts, default = 20
         self.font_size = 20
+        # Visible back parts of the xyz equators, default = ['x', 'z']
+        self.equators_back = ['x', 'z']
+        # Visible front parts of the xyz equators, default = ['x', 'z']
+        self.equators_front = ['x', 'z']
+        
+        # ---arc options---
+        # List of colors for Bloch arcs, default = ['b','g','r','y']
+        self.arc_color = ['g', '#CC6600', 'b', 'r']
+        #: Width of Bloch arcs, default = 3
+        self.arc_width = 3
 
         # ---vector options---
         # List of colors for Bloch vectors, default = ['b','g','r','y']
@@ -173,6 +183,8 @@ class Bloch:
         self.vectors = []
         # Data for annotations
         self.annotations = []
+        # Data for arcs
+        self.arcs = []
         # Number of times sphere has been saved
         self.savenum = 0
         # Style of points, 'm' for multiple colors, 's' for single color
@@ -401,6 +413,35 @@ class Bloch:
                                  'text': text,
                                  'opts': kwargs})
 
+    def add_arc(self, start_angle, end_angle, radius=1.0, dir='z', label=None, **kwargs):
+        """
+        Add an arc to Bloch sphere
+
+        Parameters
+        ----------
+        start_angle : float
+            Start angle of the arc in its plane.
+        end_angle : float
+            End angle of the arc in its plane.
+        radius : float
+            Radius of the arc.
+        dir : str
+            Direction perpendicular to the arc ('x', 'y' or 'z').
+        label : str
+            Annotation text.
+            You can use LaTeX, but remember to use raw string
+            e.g. r"$\\theta$"
+            or escape backslashes
+            e.g. "$\\\\theta$".
+
+        kwargs :
+            Options as for mplot3d.axes3d.text, including:
+            fontsize, color, horizontalalignment, verticalalignment.
+
+        """
+        self.arcs.append({'start_angle': start_angle, 'end_angle': end_angle,
+                          'radius': radius, 'dir': dir, 'label': label})
+
     def make_sphere(self):
         """
         Plots Bloch sphere and data sets.
@@ -449,6 +490,7 @@ class Bloch:
 
         self.axes.grid(False)
         self.plot_back()
+        self.plot_arcs()
         self.plot_points()
         self.plot_vectors()
         self.plot_front()
@@ -466,16 +508,19 @@ class Bloch:
                                color=self.sphere_color, linewidth=0,
                                alpha=self.sphere_alpha)
         # wireframe
-        self.axes.plot_wireframe(x, y, z, rstride=5, cstride=5,
+        self.axes.plot_wireframe(x, y, z, rstride=4, cstride=4,
                                  color=self.frame_color,
                                  alpha=self.frame_alpha)
-        # equator
-        self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='z',
-                       lw=self.frame_width, color=self.frame_color)
-        self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='y',
-                       lw=self.frame_width, color=self.frame_color)
-        self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='x',
-                       lw=self.frame_width, color=self.frame_color)
+        # equators
+        if 'z' in self.equators_back:
+            self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='z',
+                        lw=self.frame_width, color=self.frame_color)
+        if 'y' in self.equators_back:
+            self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='y',
+                        lw=self.frame_width, color=self.frame_color)
+        if 'x' in self.equators_back:
+            self.axes.plot(1.0 * cos(u), 1.0 * sin(u), zs=0, zdir='x',
+                        lw=self.frame_width, color=self.frame_color)
 
     def plot_front(self):
         # front half of sphere
@@ -488,19 +533,22 @@ class Bloch:
                                color=self.sphere_color, linewidth=0,
                                alpha=self.sphere_alpha)
         # wireframe
-        self.axes.plot_wireframe(x, y, z, rstride=5, cstride=5,
+        self.axes.plot_wireframe(x, y, z, rstride=4, cstride=4,
                                  color=self.frame_color,
                                  alpha=self.frame_alpha)
-        # equator
-        self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
-                       zs=0, zdir='z', lw=self.frame_width,
-                       color=self.frame_color)
-        self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
-                       zs=0, zdir='y', lw=self.frame_width,
-                       color=self.frame_color)
-        self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
-                       zs=0, zdir='x', lw=self.frame_width,
-                       color=self.frame_color)
+        # equators
+        if 'z' in self.equators_front:
+            self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
+                        zs=0, zdir='z', lw=self.frame_width,
+                        color=self.frame_color)
+        if 'y' in self.equators_front:
+            self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
+                        zs=0, zdir='y', lw=self.frame_width,
+                        color=self.frame_color)
+        if 'x' in self.equators_front:
+            self.axes.plot(1.0 * cos(u), 1.0 * sin(u),
+                        zs=0, zdir='x', lw=self.frame_width,
+                        color=self.frame_color)
 
     def plot_axes(self):
         # axes
@@ -623,6 +671,43 @@ class Bloch:
             opts.update(annotation['opts'])
             self.axes.text(vec[1], -vec[0], vec[2],
                            annotation['text'], **opts)
+
+    def plot_arcs(self):
+        swap = {'x': 'y', 'y': 'x', 'z': 'z'}
+        for k, arc in enumerate(self.arcs):
+            angle_degrees = abs(arc['end_angle']-arc['start_angle']) / pi * 180
+            n_points = int(angle_degrees/10)*2 + 1
+            u = linspace(arc['start_angle'], arc['end_angle'], int(angle_degrees/5))
+            xs = arc['radius'] * cos(u)
+            ys = arc['radius'] * sin(u)
+            color = self.arc_color[mod(k, len(self.arc_color))]
+            
+            if arc['dir'] == 'x':
+                self.axes.plot(-xs, ys, zs=0, zdir=swap[arc['dir']],
+                               lw=self.arc_width, color=color)
+            if arc['dir'] == 'y':
+                self.axes.plot(xs, ys, zs=0, zdir=swap[arc['dir']],
+                               lw=self.arc_width, color=color)
+            if arc['dir'] == 'z':
+                self.axes.plot(ys, -xs, zs=0, zdir=swap[arc['dir']],
+                               lw=self.arc_width, color=color)
+            
+            if arc.get('label'):
+                xs = (arc['radius']+0.2) * cos(u)
+                ys = (arc['radius']+0.2) * sin(u)
+                opts = {'fontsize': self.font_size,
+                        'color': self.font_color,
+                        'horizontalalignment': 'center',
+                        'verticalalignment': 'center'}
+                if swap[arc['dir']] == 'x':
+                    self.axes.text(0, xs[n_points//2], ys[n_points//2],
+                                   arc['label'], **opts)
+                if swap[arc['dir']] == 'y':
+                    self.axes.text(xs[n_points//2], 0, ys[n_points//2],
+                                   arc['label'], **opts)
+                if swap[arc['dir']] == 'z':
+                    self.axes.text(ys[n_points//2], -xs[n_points//2], 0,
+                                   arc['label'], **opts)
 
     def show(self):
         """
