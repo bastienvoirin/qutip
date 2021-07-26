@@ -413,7 +413,7 @@ class Bloch:
                                  'text': text,
                                  'opts': kwargs})
 
-    def add_arc(self, start_angle, end_angle, radius=1.0, dir='z', label=None, **kwargs):
+    def add_arc(self, start_angle, end_angle, radius=1.0, dir='z', z_angle=0, label=None, **kwargs):
         """
         Add an arc to Bloch sphere
 
@@ -427,6 +427,8 @@ class Bloch:
             Radius of the arc.
         dir : str
             Direction perpendicular to the arc ('x', 'y' or 'z').
+        z_angle : float
+            Rotation angle around z-axis.
         label : str
             Annotation text.
             You can use LaTeX, but remember to use raw string
@@ -440,7 +442,8 @@ class Bloch:
 
         """
         self.arcs.append({'start_angle': start_angle, 'end_angle': end_angle,
-                          'radius': radius, 'dir': dir, 'label': label})
+                          'radius': radius, 'dir': dir, 'z_angle': z_angle,
+                          'label': label})
 
     def make_sphere(self):
         """
@@ -677,19 +680,23 @@ class Bloch:
         for k, arc in enumerate(self.arcs):
             angle_degrees = abs(arc['end_angle']-arc['start_angle']) / pi * 180
             n_points = int(angle_degrees/10)*2 + 1
-            u = linspace(arc['start_angle'], arc['end_angle'], int(angle_degrees/5))
+            u = linspace(arc['start_angle'], arc['end_angle'], n_points)
             xs = arc['radius'] * cos(u)
             ys = arc['radius'] * sin(u)
             color = self.arc_color[mod(k, len(self.arc_color))]
+            c, s = cos(arc['z_angle']), sin(arc['z_angle'])
+            rot = array(((c, -s), (s, c)))
             
-            if arc['dir'] == 'x':
-                self.axes.plot(-xs, ys, zs=0, zdir=swap[arc['dir']],
+            if swap[arc['dir']] == 'x':
+                a, b = rot.dot(array([[0]*n_points, -xs]))
+                self.axes.plot(a, b, zs=ys,
                                lw=self.arc_width, color=color)
-            if arc['dir'] == 'y':
-                self.axes.plot(xs, ys, zs=0, zdir=swap[arc['dir']],
+            if swap[arc['dir']] == 'y':
+                a, b = rot.dot(array([xs, [0]*n_points]))
+                self.axes.plot(a, b, zs=ys,
                                lw=self.arc_width, color=color)
-            if arc['dir'] == 'z':
-                self.axes.plot(ys, -xs, zs=0, zdir=swap[arc['dir']],
+            if swap[arc['dir']] == 'z':
+                self.axes.plot(ys, -xs, zs=0,
                                lw=self.arc_width, color=color)
             
             if arc.get('label'):
@@ -699,11 +706,14 @@ class Bloch:
                         'color': self.font_color,
                         'horizontalalignment': 'center',
                         'verticalalignment': 'center'}
+                
                 if swap[arc['dir']] == 'x':
-                    self.axes.text(0, xs[n_points//2], ys[n_points//2],
+                    a, b = rot.dot(array([0, -xs[n_points//2]]))
+                    self.axes.text(a, b, ys[n_points//2],
                                    arc['label'], **opts)
                 if swap[arc['dir']] == 'y':
-                    self.axes.text(xs[n_points//2], 0, ys[n_points//2],
+                    a, b = rot.dot(array([xs[n_points//2], 0]))
+                    self.axes.text(a, b, ys[n_points//2],
                                    arc['label'], **opts)
                 if swap[arc['dir']] == 'z':
                     self.axes.text(ys[n_points//2], -xs[n_points//2], 0,
