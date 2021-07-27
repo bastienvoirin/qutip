@@ -423,7 +423,8 @@ class Bloch:
                                  'text': text,
                                  'opts': kwargs})
 
-    def add_arc(self, start_angle, end_angle, radius=1.0, dir='z', z_angle=0, label=None, **kwargs):
+    def add_arc(self, start_angle, end_angle, radius=1.0, dir='z',
+                z_angle=0, label=None, arrowhead=False, **kwargs):
         """
         Add an arc to Bloch sphere
 
@@ -453,9 +454,9 @@ class Bloch:
         """
         self.arcs.append({**{'start_angle': start_angle, 'end_angle': end_angle,
                          'radius': radius, 'dir': dir, 'z_angle': z_angle,
-                         'label': label}, **kwargs})
+                         'label': label, 'arrowhead': arrowhead}, **kwargs})
         
-    def add_projection(self, x, y, z, **kwargs):
+    def add_projection(self, x, y, z, xy=False, **kwargs):
         """
         Add a projection to Bloch sphere
 
@@ -473,7 +474,8 @@ class Bloch:
             fontsize, color, horizontalalignment, verticalalignment.
 
         """
-        self.projections.append({**{'x': x, 'y': y, 'z': z}, **kwargs})
+        self.projections.append({**{'x': x, 'y': y, 'z': z, 'xy': xy},
+                                 **kwargs})
 
     def make_sphere(self):
         """
@@ -722,13 +724,31 @@ class Bloch:
                 a, b = rot.dot(array([[0]*n_points, -xs]))
                 self.axes.plot(a, b, zs=ys,
                                lw=self.arc_width, color=color)
+                xs3d = a[-2:]+(a[-1]-a[-2])/2
+                ys3d = b[-2:]+(b[-1]-b[-2])/2
+                zs3d = ys[-2:]+(ys[-1]-ys[-2])/2
             if swap[arc['dir']] == 'y':
                 a, b = rot.dot(array([xs, [0]*n_points]))
                 self.axes.plot(a, b, zs=ys,
                                lw=self.arc_width, color=color)
+                xs3d = a[-2:]+(a[-1]-a[-2])/2
+                ys3d = b[-2:]+(b[-1]-b[-2])/2
+                zs3d = ys[-2:]+(ys[-1]-ys[-2])/2
             if swap[arc['dir']] == 'z':
                 self.axes.plot(ys, -xs, zs=0,
                                lw=self.arc_width, color=color)
+                xs3d = ys[-2:]+(ys[-1]-ys[-2])/2
+                ys3d = -xs[-2:]-(xs[-1]-xs[-2])/2
+                zs3d = array([0, 0])
+            
+            if arc.get('arrowhead'):
+                a = Arrow3D(xs3d, ys3d, zs3d,
+                            mutation_scale=self.vector_mutation,
+                            lw=self.vector_width,
+                            arrowstyle=self.vector_style,
+                            color=color, shrinkA=0, shrinkB=0)
+                
+                self.axes.add_artist(a)
             
             if arc.get('label'):
                 xs = (arc['radius']+0.2) * cos(u)
@@ -752,8 +772,8 @@ class Bloch:
                     
     def plot_projections(self):
         for k, projection in enumerate(self.projections):
-            x, y, z, *kwargs = projection.items()
-            x, y, z, kwargs = x[1], y[1], z[1], dict(kwargs)
+            x, y, z, xy, *kwargs = projection.items()
+            x, y, z, xy, kwargs = x[1], y[1], z[1], xy[1], dict(kwargs)
             color = self.projection_color[mod(k, len(self.projection_color))]
             opts = {'color': color,
                     'lw': self.projection_width,
@@ -762,6 +782,10 @@ class Bloch:
                            [*linspace(0, y, 100)] + [y]*100,
                            [0]*100 + [*linspace(0, z, 100)],
                            **{**opts, **kwargs})
+            if projection.get('xy'):
+                self.axes.plot([*linspace(0, x, 100)] + [x]*100,
+                               [y]*100 + [*linspace(y, 0, 100)],
+                               [0]*200, **{**opts, **kwargs})
 
     def show(self):
         """
