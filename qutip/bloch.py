@@ -153,19 +153,27 @@ class Bloch:
         self.equators_front = ['x', 'z']
         
         # ---arc options---
-        # List of colors for Bloch arcs, default = ['b','g','r','y']
-        self.arc_color = ['g', '#CC6600', 'b', 'r']
-        #: Width of Bloch arcs, default = 3
-        self.arc_width = 3
+        # List of colors for Bloch arcs, default = ['k']
+        self.arc_color = ['k']
+        # Width of Bloch arcs, default = 2
+        self.arc_width = 2
+        
+        # ---projection options---
+        # List of colors for projections, default = ['k']
+        self.projection_color = ['k']
+        # Width of projections, default = 2
+        self.projection_width = 2
+        # Style of projections, default = '--' (dashed line)
+        self.projection_style = '--'
 
         # ---vector options---
         # List of colors for Bloch vectors, default = ['b','g','r','y']
         self.vector_color = ['g', '#CC6600', 'b', 'r']
-        #: Width of Bloch vectors, default = 5
+        # Width of Bloch vectors, default = 5
         self.vector_width = 3
-        #: Style of Bloch vectors, default = '-\|>' (or 'simple')
+        # Style of Bloch vectors, default = '-\|>' (or 'simple')
         self.vector_style = '-|>'
-        #: Sets the width of the vectors arrowhead
+        # Sets the width of the vectors arrowhead
         self.vector_mutation = 20
 
         # ---point options---
@@ -185,6 +193,8 @@ class Bloch:
         self.annotations = []
         # Data for arcs
         self.arcs = []
+        # Data for projections
+        self.projections = []
         # Number of times sphere has been saved
         self.savenum = 0
         # Style of points, 'm' for multiple colors, 's' for single color
@@ -441,9 +451,29 @@ class Bloch:
             fontsize, color, horizontalalignment, verticalalignment.
 
         """
-        self.arcs.append({'start_angle': start_angle, 'end_angle': end_angle,
-                          'radius': radius, 'dir': dir, 'z_angle': z_angle,
-                          'label': label})
+        self.arcs.append({**{'start_angle': start_angle, 'end_angle': end_angle,
+                         'radius': radius, 'dir': dir, 'z_angle': z_angle,
+                         'label': label}, **kwargs})
+        
+    def add_projection(self, x, y, z, **kwargs):
+        """
+        Add a projection to Bloch sphere
+
+        Parameters
+        ----------
+        x : float
+            x coordinate of the point to project on the xy plane.
+        y : float
+            y coordinate of the point to project on the xy plane.
+        z : float
+            z coordinate of the point to project on the xy plane.
+
+        kwargs :
+            Options as for mplot3d.axes3d.text, including:
+            fontsize, color, horizontalalignment, verticalalignment.
+
+        """
+        self.projections.append({**{'x': x, 'y': y, 'z': z}, **kwargs})
 
     def make_sphere(self):
         """
@@ -494,6 +524,7 @@ class Bloch:
         self.axes.grid(False)
         self.plot_back()
         self.plot_arcs()
+        self.plot_projections()
         self.plot_points()
         self.plot_vectors()
         self.plot_front()
@@ -718,6 +749,19 @@ class Bloch:
                 if swap[arc['dir']] == 'z':
                     self.axes.text(ys[n_points//2], -xs[n_points//2], 0,
                                    arc['label'], **opts)
+                    
+    def plot_projections(self):
+        for k, projection in enumerate(self.projections):
+            x, y, z, *kwargs = projection.items()
+            x, y, z, kwargs = x[1], y[1], z[1], dict(kwargs)
+            color = self.projection_color[mod(k, len(self.projection_color))]
+            opts = {'color': color,
+                    'lw': self.projection_width,
+                    'ls': self.projection_style}
+            self.axes.plot([*linspace(0, x, 100)] + [x]*100,
+                           [*linspace(0, y, 100)] + [y]*100,
+                           [0]*100 + [*linspace(0, z, 100)],
+                           **{**opts, **kwargs})
 
     def show(self):
         """
