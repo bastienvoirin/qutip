@@ -3,7 +3,7 @@ __all__ = ['Bloch']
 import os
 
 from numpy import (ndarray, array, linspace, pi, outer, cos, sin, ones, size,
-                   sqrt, real, mod, append, ceil, arange)
+                   sqrt, real, mod, append, ceil, arange, sign)
 
 from packaging.version import parse as parse_version
 
@@ -97,7 +97,7 @@ class Bloch:
         Azimuthal and Elevation viewing angles.
     xlabel : list, default ["$x$", ""]
         List of strings corresponding to +x and -x axes labels, respectively.
-    xlpos : list, default [1.1, -1.1]
+    xlpos : list, default [1.2, -1.2]
         Positions of +x and -x labels respectively.
     ylabel : list, default ["$y$", ""]
         List of strings corresponding to +y and -y axes labels, respectively.
@@ -447,6 +447,10 @@ class Bloch:
             e.g. r"$\\theta$"
             or escape backslashes
             e.g. "$\\\\theta$".
+        arrowhead : bool
+            If true, an arrow head will be drawn.
+        arrowhead_pos : float/int
+            Position of the arrow head along the arc in percentage.
 
         kwargs :
             Options as for mplot3d.axes3d.text, including:
@@ -473,7 +477,8 @@ class Bloch:
                                  'z_angle': z_angle, 'label': label,
                                  'arrowhead': arrowhead}, **kwargs})
         
-    def add_projection(self, x, y, z, xy=False, **kwargs):
+    def add_projection(self, x, y, z, x_label='', y_label='', z_label='',
+                       xy=False, offset=0.2, **kwargs):
         """
         Add a projection to Bloch sphere
 
@@ -485,14 +490,27 @@ class Bloch:
             y coordinate of the point to project on the xy plane.
         z : float
             z coordinate of the point to project on the xy plane.
+        x_label : str
+            Label of the x-axis projection.
+        y_label : str
+            Label of the y-axis projection.
+        z_label : str
+            Label of the z-axis projection.
+        xy : bool
+            If true, the xy projections will be drawn.
+        offset : float
 
         kwargs :
             Options as for mplot3d.axes3d.text, including:
             fontsize, color, horizontalalignment, verticalalignment.
 
         """
-        self.projections.append({**{'x': x, 'y': y, 'z': z, 'xy': xy},
-                                 **kwargs})
+        self.projections.append({**{'x': x, 'y': y, 'z': z,
+                                    'x_label': x_label,
+                                    'y_label': y_label,
+                                    'z_label': z_label,
+                                    'xy': xy, 'offset': offset},
+                                    **kwargs})
 
     def make_sphere(self):
         """
@@ -742,20 +760,23 @@ class Bloch:
             if swap[arc['dir']] == 'x':
                 a, b = rot.dot(array([[0]*n_points, -xs]))
                 self.axes.plot(a[:-1], b[:-1], zs=ys[:-1],
-                               lw=self.arc_width, color=color)
+                               lw=self.arc_width, color=color,
+                               solid_capstyle='butt', dash_capstyle='butt')
                 xs3d = array([a[-3], a[-1]])
                 ys3d = array([b[-3], b[-1]])
                 zs3d = array([ys[-3], ys[-1]])
             if swap[arc['dir']] == 'y':
                 a, b = rot.dot(array([xs, [0]*n_points]))
                 self.axes.plot(a[:-1], b[:-1], zs=ys[:-1],
-                               lw=self.arc_width, color=color)
+                               lw=self.arc_width, color=color,
+                               solid_capstyle='butt', dash_capstyle='butt')
                 xs3d = array([a[-3], a[-1]])
                 ys3d = array([b[-3], b[-1]])
                 zs3d = array([ys[-3], ys[-1]])
             if swap[arc['dir']] == 'z':
                 self.axes.plot(ys[:-1], -xs[:-1], zs=0,
-                               lw=self.arc_width, color=color)
+                               lw=self.arc_width, color=color,
+                               solid_capstyle='butt', dash_capstyle='butt')
                 xs3d = array([ys[-3], ys[-1]])
                 ys3d = array([-xs[-3], -xs[-1]])
                 zs3d = array([0, 0])
@@ -791,8 +812,11 @@ class Bloch:
                     
     def plot_projections(self):
         for k, projection in enumerate(self.projections):
-            x, y, z, xy, *kwargs = projection.items()
-            x, y, z, xy, kwargs = x[1], y[1], z[1], xy[1], dict(kwargs)
+            x, y, z, x_lbl, y_lbl, z_lbl, xy, offset = (
+                projection.get('x'), projection.get('y'),
+                projection.get('z'), projection.get('x_label'),
+                projection.get('y_label'), projection.get('z_label'),
+                projection.get('xy'), projection.get('offset'))
             color = self.projection_color[mod(k, len(self.projection_color))]
             opts = {'color': color,
                     'lw': self.projection_width,
@@ -800,11 +824,19 @@ class Bloch:
             self.axes.plot([*linspace(0, x, 100)] + [x]*100,
                            [*linspace(0, y, 100)] + [y]*100,
                            [0]*100 + [*linspace(0, z, 100)],
-                           **{**opts, **kwargs})
-            if projection.get('xy'):
+                           solid_capstyle='butt', dash_capstyle='butt', **opts)
+            if z_lbl:
+                t = offset/sqrt(x**2+y**2)
+                self.add_annotation([-y*(1+t), x*(1+t), z/2], z_lbl)
+            if xy:
                 self.axes.plot([*linspace(0, x, 100)] + [x]*100,
                                [y]*100 + [*linspace(y, 0, 100)],
-                               [0]*200, **{**opts, **kwargs})
+                               [0]*200, solid_capstyle='butt',
+                               dash_capstyle='butt', **opts)
+                if x_lbl:
+                    self.add_annotation([-y/2, x+offset*sign(x), 0], x_lbl)
+                if y_lbl:
+                    self.add_annotation([-y-offset*sign(y), x/2, 0], y_lbl)
 
     def show(self):
         """
