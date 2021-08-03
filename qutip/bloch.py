@@ -424,7 +424,8 @@ class Bloch:
                                  'opts': kwargs})
 
     def add_arc(self, start_angle, end_angle, radius=1.0, dir='z',
-                z_angle=0, label=None, arrowhead=False, **kwargs):
+                z_angle=0, label=None, arrowhead=False, arrowhead_pos=100,
+                **kwargs):
         """
         Add an arc to Bloch sphere
 
@@ -452,9 +453,25 @@ class Bloch:
             fontsize, color, horizontalalignment, verticalalignment.
 
         """
-        self.arcs.append({**{'start_angle': start_angle, 'end_angle': end_angle,
-                         'radius': radius, 'dir': dir, 'z_angle': z_angle,
-                         'label': label, 'arrowhead': arrowhead}, **kwargs})
+        if arrowhead_pos == 100:
+            self.arcs.append({**{'start_angle': start_angle,
+                                 'end_angle': end_angle,
+                                 'radius': radius, 'dir': dir,
+                                 'z_angle': z_angle, 'label': label,
+                                 'arrowhead': arrowhead}, **kwargs})
+        else:
+            mid_angle = (arrowhead_pos/100)*(end_angle-start_angle)
+            mid_angle += start_angle
+            self.arcs.append({**{'start_angle': mid_angle,
+                                 'end_angle': end_angle,
+                                 'radius': radius, 'dir': dir,
+                                 'z_angle': z_angle, 'label': label,
+                                 'arrowhead': False}, **kwargs})
+            self.arcs.append({**{'start_angle': start_angle,
+                                 'end_angle': mid_angle,
+                                 'radius': radius, 'dir': dir,
+                                 'z_angle': z_angle, 'label': label,
+                                 'arrowhead': arrowhead}, **kwargs})
         
     def add_projection(self, x, y, z, xy=False, **kwargs):
         """
@@ -712,8 +729,10 @@ class Bloch:
         swap = {'x': 'y', 'y': 'x', 'z': 'z'}
         for k, arc in enumerate(self.arcs):
             angle_degrees = abs(arc['end_angle']-arc['start_angle']) / pi * 180
-            n_points = int(angle_degrees/10)*2 + 1
+            n_points = int(round(angle_degrees))
             u = linspace(arc['start_angle'], arc['end_angle'], n_points)
+            u = array([*u, u[-1]+(u[-1]-u[-2])])
+            n_points += 1
             xs = arc['radius'] * cos(u)
             ys = arc['radius'] * sin(u)
             color = self.arc_color[mod(k, len(self.arc_color))]
@@ -722,23 +741,23 @@ class Bloch:
             
             if swap[arc['dir']] == 'x':
                 a, b = rot.dot(array([[0]*n_points, -xs]))
-                self.axes.plot(a, b, zs=ys,
+                self.axes.plot(a[:-1], b[:-1], zs=ys[:-1],
                                lw=self.arc_width, color=color)
-                xs3d = a[-2:]+(a[-1]-a[-2])/2
-                ys3d = b[-2:]+(b[-1]-b[-2])/2
-                zs3d = ys[-2:]+(ys[-1]-ys[-2])/2
+                xs3d = array([a[-3], a[-1]])
+                ys3d = array([b[-3], b[-1]])
+                zs3d = array([ys[-3], ys[-1]])
             if swap[arc['dir']] == 'y':
                 a, b = rot.dot(array([xs, [0]*n_points]))
-                self.axes.plot(a, b, zs=ys,
+                self.axes.plot(a[:-1], b[:-1], zs=ys[:-1],
                                lw=self.arc_width, color=color)
-                xs3d = a[-2:]+(a[-1]-a[-2])/2
-                ys3d = b[-2:]+(b[-1]-b[-2])/2
-                zs3d = ys[-2:]+(ys[-1]-ys[-2])/2
+                xs3d = array([a[-3], a[-1]])
+                ys3d = array([b[-3], b[-1]])
+                zs3d = array([ys[-3], ys[-1]])
             if swap[arc['dir']] == 'z':
-                self.axes.plot(ys, -xs, zs=0,
+                self.axes.plot(ys[:-1], -xs[:-1], zs=0,
                                lw=self.arc_width, color=color)
-                xs3d = ys[-2:]+(ys[-1]-ys[-2])/2
-                ys3d = -xs[-2:]-(xs[-1]-xs[-2])/2
+                xs3d = array([ys[-3], ys[-1]])
+                ys3d = array([-xs[-3], -xs[-1]])
                 zs3d = array([0, 0])
             
             if arc.get('arrowhead'):
