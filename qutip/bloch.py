@@ -165,6 +165,14 @@ class Bloch:
         self.projection_width = 2
         # Style of projections, default = '--' (dashed line)
         self.projection_style = '--'
+        
+        # ---trajectory options---
+        # List of colors for trajectories, default = ['k']
+        self.trajectory_color = ['k']
+        # Width of trajectories, default = 2
+        self.trajectory_width = 2
+        # Style of trajectories, default = '-' (solid line)
+        self.trajectory_style = '-'
 
         # ---vector options---
         # List of colors for Bloch vectors, default = ['b','g','r','y']
@@ -195,6 +203,8 @@ class Bloch:
         self.arcs = []
         # Data for projections
         self.projections = []
+        # Data for trajectories
+        self.trajectories = []
         # Number of times sphere has been saved
         self.savenum = 0
         # Style of points, 'm' for multiple colors, 's' for single color
@@ -425,7 +435,7 @@ class Bloch:
 
     def add_arc(self, start_angle, end_angle, radius=1.0, dir='z',
                 z_angle=0, label=None, arrowhead=False, arrowhead_pos=100,
-                **kwargs):
+                capstyle='butt', **kwargs):
         """
         Add an arc to Bloch sphere
 
@@ -451,6 +461,8 @@ class Bloch:
             If true, an arrow head will be drawn.
         arrowhead_pos : float/int
             Position of the arrow head along the arc in percentage.
+        capstyle : str
+            Line cap style ('butt', 'round' or 'projection').
 
         kwargs :
             Options as for mplot3d.axes3d.text, including:
@@ -462,20 +474,27 @@ class Bloch:
                                  'end_angle': end_angle,
                                  'radius': radius, 'dir': dir,
                                  'z_angle': z_angle, 'label': label,
-                                 'arrowhead': arrowhead}, **kwargs})
+                                 'arrowhead': arrowhead,
+                                 'capstyle': capstyle}, **kwargs})
         else:
             mid_angle = (arrowhead_pos/100)*(end_angle-start_angle)
             mid_angle += start_angle
+            if arrowhead_pos < 50:
+                label_1, label_2 = label, ''
+            else:
+                label_1, label_2 = '', label
             self.arcs.append({**{'start_angle': mid_angle,
                                  'end_angle': end_angle,
                                  'radius': radius, 'dir': dir,
-                                 'z_angle': z_angle, 'label': label,
-                                 'arrowhead': False}, **kwargs})
+                                 'z_angle': z_angle, 'label': label_1,
+                                 'arrowhead': False,
+                                 'capstyle': capstyle}, **kwargs})
             self.arcs.append({**{'start_angle': start_angle,
                                  'end_angle': mid_angle,
                                  'radius': radius, 'dir': dir,
-                                 'z_angle': z_angle, 'label': label,
-                                 'arrowhead': arrowhead}, **kwargs})
+                                 'z_angle': z_angle, 'label': label_2,
+                                 'arrowhead': arrowhead,
+                                 'capstyle': capstyle}, **kwargs})
         
     def add_projection(self, x, y, z, x_label='', y_label='', z_label='',
                        xy=False, offset=0.2, **kwargs):
@@ -511,6 +530,45 @@ class Bloch:
                                     'z_label': z_label,
                                     'xy': xy, 'offset': offset},
                                     **kwargs})
+        
+    def add_trajectory(self, xs, ys, zs, arrowhead=False,
+                       arrowhead_pos=100, capstyle='butt',
+                       style='', **kwargs):
+        """
+        Add a trajectory to Bloch sphere
+
+        Parameters
+        ----------
+        arrowhead : bool
+            If true, an arrow head will be drawn.
+        arrowhead_pos : float/int
+            Position of the arrow head along the arc in percentage.
+        capstyle : str
+            Line cap style ('butt', 'round' or 'projection').
+        style : str
+            Line style.
+
+        kwargs :
+            Options as for mplot3d.axes3d.text, including:
+            fontsize, color, horizontalalignment, verticalalignment.
+
+        """
+        style = style or self.trajectory_style
+        if arrowhead_pos == 100:
+            self.trajectories.append({**{'xs': xs, 'ys': ys, 'zs': zs,
+                                         'arrowhead': arrowhead,
+                                         'capstyle': capstyle,
+                                         'style': style}, **kwargs})
+        else:
+            mid = int(round(len(xs)*arrowhead_pos/100))
+            self.trajectories.append({**{'xs': xs[mid-1:], 'ys': ys[mid-1:],
+                                         'zs': zs[mid-1:], 'arrowhead': False,
+                                         'capstyle': capstyle,
+                                         'style': style}, **kwargs})
+            self.trajectories.append({**{'xs': xs[:mid], 'ys': ys[:mid],
+                                         'zs': zs[:mid], 'arrowhead': arrowhead,
+                                         'capstyle': capstyle,
+                                         'style': style}, **kwargs})
 
     def make_sphere(self):
         """
@@ -562,6 +620,7 @@ class Bloch:
         self.plot_back()
         self.plot_arcs()
         self.plot_projections()
+        self.plot_trajectories()
         self.plot_points()
         self.plot_vectors()
         self.plot_front()
@@ -761,7 +820,8 @@ class Bloch:
                 a, b = rot.dot(array([[0]*n_points, -xs]))
                 self.axes.plot(a[:-1], b[:-1], zs=ys[:-1],
                                lw=self.arc_width, color=color,
-                               solid_capstyle='butt', dash_capstyle='butt')
+                               solid_capstyle=arc.get('capstyle'),
+                               dash_capstyle=arc.get('capstyle'))
                 xs3d = array([a[-3], a[-1]])
                 ys3d = array([b[-3], b[-1]])
                 zs3d = array([ys[-3], ys[-1]])
@@ -769,14 +829,16 @@ class Bloch:
                 a, b = rot.dot(array([xs, [0]*n_points]))
                 self.axes.plot(a[:-1], b[:-1], zs=ys[:-1],
                                lw=self.arc_width, color=color,
-                               solid_capstyle='butt', dash_capstyle='butt')
+                               solid_capstyle=arc.get('capstyle'),
+                               dash_capstyle=arc.get('capstyle'))
                 xs3d = array([a[-3], a[-1]])
                 ys3d = array([b[-3], b[-1]])
                 zs3d = array([ys[-3], ys[-1]])
             if swap[arc['dir']] == 'z':
                 self.axes.plot(ys[:-1], -xs[:-1], zs=0,
                                lw=self.arc_width, color=color,
-                               solid_capstyle='butt', dash_capstyle='butt')
+                               solid_capstyle=arc.get('capstyle'),
+                               dash_capstyle=arc.get('capstyle'))
                 xs3d = array([ys[-3], ys[-1]])
                 ys3d = array([-xs[-3], -xs[-1]])
                 zs3d = array([0, 0])
@@ -837,6 +899,26 @@ class Bloch:
                     self.add_annotation([-y/2, x+offset*sign(x), 0], x_lbl)
                 if y_lbl:
                     self.add_annotation([-y-offset*sign(y), x/2, 0], y_lbl)
+                    
+    def plot_trajectories(self):
+        for k, trajectory in enumerate(self.trajectories):
+            color = self.trajectory_color[mod(k, len(self.trajectory_color))]
+            opts = {'color': color,
+                    'lw': self.trajectory_width,
+                    'ls': trajectory.get('style')}
+            xs = array(trajectory.get('xs'))
+            ys = array(trajectory.get('ys'))
+            zs = array(trajectory.get('zs'))
+            self.axes.plot(ys, -xs, zs, **opts,
+                           solid_capstyle=trajectory.get('capstyle'),
+                           dash_capstyle=trajectory.get('capstyle'))
+            if trajectory.get('arrowhead'):
+                a = Arrow3D(ys[-2:], -xs[-2:], zs[-2:],
+                            mutation_scale=self.vector_mutation,
+                            lw=self.vector_width,
+                            arrowstyle=self.vector_style,
+                            color=color, shrinkA=0, shrinkB=0)
+                self.axes.add_artist(a)
 
     def show(self):
         """
